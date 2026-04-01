@@ -43,10 +43,10 @@ def find_unanswered(repo, username, since):
     since_str = since.strftime("%Y-%m-%d")
     mention_tag = f"@{username}"
 
-    # Find candidate issues: mentioned OR commented on, updated recently.
+    repo_qualifier = f"repo:{repo}" if repo else ""
     issues = gh_api(
-        f"search/issues?q=repo:{repo}+type:issue+mentions:{username}"
-        f"+updated:>={since_str}&per_page=100",
+        f"search/issues?q={repo_qualifier}+type:issue+mentions:{username}"
+        f"+updated:>={since_str}&per_page=100".replace("q=+", "q="),
         search=True,
     )
 
@@ -55,7 +55,8 @@ def find_unanswered(repo, username, since):
     for issue in issues:
         number = issue["number"]
         title = issue["title"]
-        comments = gh_api(f"repos/{repo}/issues/{number}/comments?per_page=100")
+        issue_repo = issue["repository_url"].removeprefix("https://api.github.com/repos/")
+        comments = gh_api(f"repos/{issue_repo}/issues/{number}/comments?per_page=100")
 
         # Walk comments chronologically and track mention/reply state.
         # We only care about mentions that happened within our time window.
@@ -84,7 +85,8 @@ def find_unanswered(repo, username, since):
                 "mentioned_by": pending_mention["by"],
                 "mentioned_at": pending_mention["at"],
                 "snippet": pending_mention["snippet"],
-                "url": issue.get("html_url", f"https://github.com/{repo}/issues/{number}"),
+                "repo": issue_repo,
+                "url": issue.get("html_url", f"https://github.com/{issue_repo}/issues/{number}"),
             })
 
     # Sort by mention date, most recent first.
@@ -96,7 +98,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Find issues where you were @mentioned but haven't replied since."
     )
-    parser.add_argument("repo", help="GitHub repo (owner/repo)")
+    parser.add_argument("repo", nargs="?", default=None, help="GitHub repo (owner/repo). Omit to search all your repos.")
     parser.add_argument("--user", default=None, help="GitHub username (default: authenticated user)")
     parser.add_argument("--days", type=int, default=14, help="Look back N days (default: 14)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
@@ -118,7 +120,8 @@ def main():
     print(f"Found {len(results)} unanswered mention(s):\n")
     for r in results:
         date_str = r["mentioned_at"].strftime("%Y-%m-%d")
-        print(f"  #{r['issue']} — {r['title']}")
+        repo_prefix = f"{r['repo']}" if "repo" in r else ""
+        print(f"  {repo_prefix}#{r['issue']} — {r['title']}")
         print(f"    Mentioned by @{r['mentioned_by']} on {date_str}")
         print(f"    {r['snippet']}...")
         print(f"    {r['url']}")
