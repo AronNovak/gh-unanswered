@@ -1,3 +1,20 @@
+Metadata-Version: 2.4
+Name: gh-unanswered
+Version: 0.1.0
+Summary: Find GitHub issues where you were @mentioned but haven't replied since
+Author: Aron Novak
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/AronNovak/gh-unanswered
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Software Development
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
 # gh-unanswered
 
 Find GitHub issues where you were @mentioned but haven't replied since.
