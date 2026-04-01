@@ -5,15 +5,21 @@ import argparse
 import json
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone, timedelta
 
 
-def gh_api(endpoint, search=False):
+def gh_api(endpoint, search=False, retries=3):
     args = ["gh", "api", "--paginate", endpoint]
     if search:
         args = ["gh", "api", endpoint]
-    result = subprocess.run(args, capture_output=True, text=True)
-    if result.returncode != 0:
+    for attempt in range(retries):
+        result = subprocess.run(args, capture_output=True, text=True)
+        if result.returncode == 0:
+            break
+        if attempt < retries - 1 and ("503" in result.stderr or "secondary rate limit" in result.stderr):
+            time.sleep(2 ** attempt)
+            continue
         print(f"Error calling gh api {endpoint}: {result.stderr}", file=sys.stderr)
         sys.exit(1)
     raw = result.stdout.strip()
@@ -39,14 +45,15 @@ def parse_dt(s):
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
 
-def find_unanswered(repo, username, since):
+def find_unanswered(repo, username, since, include_closed=False):
     since_str = since.strftime("%Y-%m-%d")
     mention_tag = f"@{username}"
 
     repo_qualifier = f"repo:{repo}" if repo else ""
+    state_qualifier = "" if include_closed else "+state:open"
     issues = gh_api(
         f"search/issues?q={repo_qualifier}+type:issue+mentions:{username}"
-        f"+updated:>={since_str}&per_page=100".replace("q=+", "q="),
+        f"+updated:>={since_str}{state_qualifier}&per_page=100".replace("q=+", "q="),
         search=True,
     )
 
@@ -102,13 +109,14 @@ def main():
     parser.add_argument("repo", nargs="?", default=None, help="GitHub repo (owner/repo). Omit to search all your repos.")
     parser.add_argument("--user", default=None, help="GitHub username (default: authenticated user)")
     parser.add_argument("--days", type=int, default=14, help="Look back N days (default: 14)")
+    parser.add_argument("--include-closed", action="store_true", help="Include closed issues (excluded by default)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     args = parser.parse_args()
 
     username = args.user or get_username()
     since = datetime.now(timezone.utc) - timedelta(days=args.days)
 
-    results = find_unanswered(args.repo, username, since)
+    results = find_unanswered(args.repo, username, since, args.include_closed)
 
     if args.json:
         print(json.dumps(results, default=str, indent=2))
