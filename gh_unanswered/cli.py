@@ -76,6 +76,7 @@ def find_unanswered(repo, username, since):
                     "by": author,
                     "at": created,
                     "snippet": body[:150].replace("\n", " "),
+                    "comment_url": comment.get("html_url", ""),
                 }
 
         if pending_mention:
@@ -86,7 +87,7 @@ def find_unanswered(repo, username, since):
                 "mentioned_at": pending_mention["at"],
                 "snippet": pending_mention["snippet"],
                 "repo": issue_repo,
-                "url": issue.get("html_url", f"https://github.com/{issue_repo}/issues/{number}"),
+                "comment_url": pending_mention["comment_url"],
             })
 
     # Sort by mention date, most recent first.
@@ -124,7 +125,7 @@ def main():
         print(f"  {repo_prefix}#{r['issue']} — {r['title']}")
         print(f"    Mentioned by @{r['mentioned_by']} on {date_str}")
         print(f"    {r['snippet']}...")
-        print(f"    {r['url']}")
+        print(f"    {r['comment_url']}")
         print()
 
 
