@@ -1,5 +1,7 @@
 # gh-unanswered
 
+[![PyPI](https://img.shields.io/pypi/v/gh-unanswered)](https://pypi.org/project/gh-unanswered/)
+
 Find GitHub issues where you were @mentioned but haven't replied since.
 
 Unlike notification-based tools, this walks comments chronologically — if you commented first, then someone mentioned you again later, it correctly flags the issue as unanswered.
@@ -21,6 +23,15 @@ gh-unanswered --days 30                    # custom time window
 gh-unanswered --user someone               # check for another user
 gh-unanswered --json                       # machine-readable output
 ```
+
+## How it works
+
+1. Searches for issues where you're mentioned, updated within the time window
+2. Fetches all comments for each issue
+3. Walks comments in chronological order:
+   - Your comment clears any pending mention
+   - Someone else's `@you` mention (within the time window) sets a pending mention
+4. Reports issues where a mention is still pending at the end
 
 ## Example output
 
